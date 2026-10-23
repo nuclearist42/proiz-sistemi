@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KONYA LİSESİ - PROİZ Takip Sistemi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
+        .card-gelisim { border-top: 5px solid #3b82f6; } 
+        .card-ozel { border-top: 5px solid #ec4899; }    
+        .tab-active { border-bottom: 3px solid #1e3a8a; color: #1e3a8a; font-weight: bold; }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col relative">
+
+    <div class="fixed bottom-2 left-4 text-gray-400/80 text-xs font-serif italic z-0 pointer-events-none tracking-wider font-semibold">
+        Dr. Abdullah DERYAL
+    </div>
+
+    <!-- GİRİŞ EKRANI -->
+    <div id="loginScreen" class="flex-1 flex items-center justify-center bg-gray-200 p-4 relative z-10 w-full min-h-screen">
+        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-xl w-full max-w-md">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">KONYA LİSESİ</h1>
+                <p class="text-gray-500 text-sm sm:text-base">Proje İzleme (PROİZ) Sistemi</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">T.C. Kimlik Numarası</label>
+                    <input type="text" id="loginTckn" inputmode="numeric" maxlength="11" autocomplete="username" class="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="11 Haneli TCKN">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Şifre</label>
+                    <input type="password" id="loginSifre" class="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Şifreniz">
+                </div>
+                <button id="btnGiris" onclick="sistemeGirisYap()" class="w-full gradient-bg text-white font-bold py-3 rounded-lg shadow hover:opacity-90 transition">Giriş Yap</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ŞİFRE DEĞİŞTİRME EKRANI -->
+    <div id="passwordScreen" class="hidden flex-1 flex items-center justify-center bg-gray-200 p-4 relative z-10 w-full min-h-screen">
+        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-xl w-full max-w-md">
+            <h2 class="text-xl sm:text-2xl font-bold text-center text-blue-900 mb-4">Hoş Geldiniz</h2>
+            <p class="text-xs sm:text-sm text-gray-600 text-center mb-6">Güvenliğiniz için lütfen ilk girişinize özel yeni bir şifre belirleyin.</p>
+            <div class="space-y-4">
+                <input type="password" id="newSifre1" class="w-full px-4 py-2 border rounded-lg" placeholder="Yeni Şifre">
+                <input type="password" id="newSifre2" class="w-full px-4 py-2 border rounded-lg" placeholder="Yeni Şifre (Tekrar)">
+                <button onclick="sifreDegistir()" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition">Şifremi Kaydet ve Başla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ANA PANO -->
+    <div id="dashboardScreen" class="hidden flex-1 flex-col relative z-10 w-full">
+        <header class="gradient-bg text-white shadow-md py-3 px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-3 sm:gap-0 sticky top-0 z-20">
+            <div class="text-center sm:text-left">
+                <h1 class="text-lg sm:text-xl font-bold">KONYA LİSESİ</h1>
+                <p class="text-xs sm:text-sm opacity-80">PROİZ Yönetim Paneli</p>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
+                <span id="welcomeUser" class="font-medium text-sm sm:text-base mr-1 sm:mr-2"></span>
+                <button id="btnAdminPanel" onclick="adminPanelAc()" class="hidden bg-red-600 text-white px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold hover:bg-red-700 shadow border border-red-800">⚙️ Yön. Paneli</button>
+                <button onclick="cikisYap()" class="bg-white text-blue-900 px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold hover:bg-gray-100">Çıkış</button>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 sm:p-6 pb-20 w-full max-w-7xl mx-auto">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">Sorumlu Olduğunuz Eylemler</h2>
+            <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                <input id="kartAra" oninput="kartFiltrele()" type="search" placeholder="Eylem no, ad veya sorumlu ara..." class="flex-1 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 shadow-sm">
+                <select id="kartTur" onchange="kartFiltrele()" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm"><option value="">Tümü</option><option value="Okul Gelişim">Okul Gelişim</option><option value="Okul Özel">Okul Özel</option></select>
+            </div>
+            <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"></div>
+        </main>
+    </div>
+
+    <!-- EYLEM DETAY MODALI -->
+    <div id="actionModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center p-2 sm:p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+            <div class="px-4 sm:px-6 py-3 border-b flex justify-between items-start bg-gray-50 shrink-0 gap-2">
+                <div class="flex-1">
+                    <span id="modalEylemNo" class="bg-gray-800 text-white text-xs px-2 py-1 rounded"></span>
+                    <h3 id="modalEylemAdi" class="text-sm sm:text-lg font-bold text-gray-800 mt-2 line-clamp-2"></h3>
+                    <p id="sorumluOgretmenler" class="text-[10px] sm:text-xs text-blue-700 mt-1 break-words">Sorumlular: Yükleniyor...</p>
+                </div>
+                <button onclick="kapatModal()" class="text-gray-500 hover:text-red-500 text-2xl sm:text-3xl leading-none px-2">&times;</button>
+            </div>
+
+            <!-- Sekmeler -->
+            <div class="flex border-b px-2 sm:px-6 shrink-0 bg-gray-50 overflow-x-auto hide-scrollbar whitespace-nowrap">
+                <button onclick="yilSec('2025-2026')" id="tab-2025-2026" class="py-2 px-3 text-sm tab-active">2025-2026</button>
+                <button onclick="yilSec('2026-2027')" id="tab-2026-2027" class="py-2 px-3 text-sm text-gray-500 hover:text-gray-800">2026-2027</button>
+                <button onclick="yilSec('2027-2028')" id="tab-2027-2028" class="py-2 px-3 text-sm text-gray-500 hover:text-gray-800">2027-2028</button>
+                <button onclick="yilSec('2028-2029')" id="tab-2028-2029" class="py-2 px-3 text-sm text-gray-500 hover:text-gray-800">2028-2029</button>
+            </div>
+
+            <div class="p-3 sm:p-5 overflow-y-auto flex-1 bg-gray-50 flex flex-col gap-3">
+                
+                <div class="bg-white p-2 sm:p-3 rounded-lg shadow-sm border flex flex-col sm:flex-row gap-3 sm:gap-6 items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <span class="text-[11px] sm:text-xs font-bold text-gray-600 w-12">Başlama:</span>
+                        <input type="date" id="inpTarihBas" class="admin-only border rounded p-1 text-xs focus:ring-1 focus:ring-blue-500 flex-1">
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <span class="text-[11px] sm:text-xs font-bold text-gray-600 w-10">Bitiş:</span>
+                        <input type="date" id="inpTarihBit" class="admin-only border rounded p-1 text-xs focus:ring-1 focus:ring-blue-500 flex-1">
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <span class="text-[11px] sm:text-xs font-bold text-gray-600">Bütçe(₺):</span>
+                        <input type="number" id="inpButce" class="admin-only border rounded p-1 text-xs font-bold text-green-700 w-20 focus:ring-1 focus:ring-green-500" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="bg-white p-2 sm:p-3 rounded-lg shadow-sm border shrink-0">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-gray-700">Yıllık İşler Açıklaması (PROİZ)</label>
+                        <button onclick="yillikVeriKaydet()" class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] sm:text-xs font-bold hover:bg-blue-700 shadow">💾 Kaydet</button>
+                    </div>
+                    <textarea id="proizAciklama" rows="2" class="w-full border rounded p-1.5 text-xs focus:ring-2 focus:ring-blue-500" placeholder="Özetleyiniz..."></textarea>
+                </div>
+
+                <div class="bg-white p-3 sm:p-4 rounded-lg shadow-sm border flex-1 flex flex-col overflow-hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2 shrink-0">
+                        <div>
+                            <h4 class="font-bold text-sm text-gray-700">Kanıtlayıcı Dosyalar</h4>
+                            <p class="text-[10px] text-gray-500">Maksimum 5 dosya (Adet başı 10MB).</p>
+                        </div>
+                        <div class="relative w-full sm:w-auto">
+                            <input type="file" id="fileInput" class="hidden" onchange="dosyaYukleDrive()">
+                            <button onclick="document.getElementById('fileInput').click()" class="w-full sm:w-auto bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700 flex justify-center items-center gap-2 shadow">
+                                <span id="btnUploadText">+ Yeni Dosya Yükle</span>
+                            </button>
+                        </div>
+                    </div>
+                    <ul id="dosyaListesi" class="space-y-1.5 overflow-y-auto flex-1 p-1"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- YÖNETİCİ MODALI -->
+    <div id="adminModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center p-2 sm:p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden border-2 border-red-500">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
+                <div><h3 class="text-base sm:text-xl font-bold text-red-700 flex items-center gap-2">⚙️ Yönetici Paneli</h3></div>
+                <button onclick="document.getElementById('adminModal').classList.add('hidden')" class="text-gray-500 hover:text-red-500 text-2xl sm:text-3xl leading-none px-2">&times;</button>
+            </div>
+
+            <div class="flex border-b px-2 sm:px-6 shrink-0 bg-white overflow-x-auto whitespace-nowrap hide-scrollbar">
+                <button onclick="adminTabSec('eylemden')" id="admtab-eylemden" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold tab-active border-red-600 text-red-600">Eyleme Öğretmen Ata</button>
+                <button onclick="adminTabSec('ogretmenden')" id="admtab-ogretmenden" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800">Öğretmene Eylem Ata</button>
+                <button onclick="adminTabSec('kullanici')" id="admtab-kullanici" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800">Öğretmen Yönetimi</button>
+                <button onclick="adminTabSec('bosta')" id="admtab-bosta" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800">BOŞTA</button>
+                <button onclick="adminTabSec('raporlar')" id="admtab-raporlar" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800">Raporlar (Excel)</button>
+                <button onclick="adminTabSec('dosyalar')" id="admtab-dosyalar" class="py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800">📁 Dosyalar</button>
+            </div>
+
+            <div class="p-3 sm:p-6 flex-1 bg-gray-50 flex flex-col overflow-hidden">
+                <!-- PANEL 1 -->
+                <div id="adminPanel-eylemden" class="flex-1 flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-hidden">
+                    <div class="w-full sm:w-1/3 flex flex-col shrink-0">
+                        <label class="font-bold text-xs sm:text-sm text-gray-700">1. Bir Eylem Seçiniz:</label>
+                        <select id="adminEylemSelect" onchange="adminEylemSecildi()" class="w-full mt-1 border p-2 rounded focus:ring-2 focus:ring-red-500 shadow-sm text-xs sm:text-sm bg-white">
+                            <option value="">-- Eylem Seçiniz --</option>
+                        </select>
+                    </div>
+                    <div class="w-full sm:w-2/3 flex flex-col bg-white border rounded-lg p-3 sm:p-4 shadow-sm min-h-[300px]">
+                        <label class="font-bold text-xs sm:text-sm text-gray-700 mb-2">2. Görevli Öğretmenleri İşaretleyin:</label>
+                        <div id="adminOgretmenListesi" class="flex-1 overflow-y-auto border p-2 sm:p-3 rounded bg-gray-50 space-y-1">
+                            <p class="text-xs sm:text-sm text-gray-400 italic">Önce listeden bir eylem seçiniz.</p>
+                        </div>
+                        <button onclick="adminEylemIcinKaydet()" class="mt-3 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-bold w-full hover:bg-red-700 shadow shrink-0">Atamaları Kaydet</button>
+                    </div>
+                </div>
+
+                <!-- PANEL 2 -->
+                <div id="adminPanel-ogretmenden" class="hidden flex-1 flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-hidden">
+                    <div class="w-full sm:w-1/3 flex flex-col shrink-0">
+                        <label class="font-bold text-xs sm:text-sm text-gray-700">1. Öğretmen Seçiniz:</label>
+                        <select id="adminOgretmenSelect" onchange="adminOgretmenSecildi()" class="w-full mt-1 border p-2 rounded focus:ring-2 focus:ring-red-500 shadow-sm text-xs sm:text-sm bg-white">
+                            <option value="">-- Öğretmen Seçiniz --</option>
+                        </select>
+                    </div>
+                    <div class="w-full sm:w-2/3 flex flex-col bg-white border rounded-lg p-3 sm:p-4 shadow-sm min-h-[300px]">
+                        <label class="font-bold text-xs sm:text-sm text-gray-700 mb-2">2. Sorumlu Olduğu Eylemleri İşaretleyin:</label>
+                        <div id="adminEylemListesi" class="flex-1 overflow-y-auto border p-2 sm:p-3 rounded bg-gray-50 space-y-1">
+                            <p class="text-xs sm:text-sm text-gray-400 italic">Önce listeden bir öğretmen seçiniz.</p>
+                        </div>
+                        <button onclick="adminOgretmenIcinKaydet()" class="mt-3 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-bold w-full hover:bg-red-700 shadow shrink-0">Atamaları Kaydet</button>
+                    </div>
+                </div>
+
+                <!-- PANEL 3 -->
+                <div id="adminPanel-kullanici" class="hidden flex-1 flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-hidden">
+                    <div class="w-full sm:w-1/3 flex flex-col bg-white border rounded-lg p-4 shadow-sm h-max">
+                        <h4 class="font-bold text-gray-800 border-b pb-2 mb-3">Yeni Öğretmen Ekle</h4>
+                        <input type="text" id="yeniOgrTckn" placeholder="11 Haneli TCKN" inputmode="numeric" maxlength="11" class="border p-2 rounded text-sm mb-2 w-full focus:ring-2 focus:ring-red-500">
+                        <input type="text" id="yeniOgrAd" placeholder="Ad Soyad" class="border p-2 rounded text-sm mb-2 w-full focus:ring-2 focus:ring-red-500">
+                        <input type="text" id="yeniOgrSifre" placeholder="Geçici Şifre" class="border p-2 rounded text-sm mb-2 w-full focus:ring-2 focus:ring-red-500">
+                        <select id="yeniOgrRol" class="border p-2 rounded text-sm mb-2 w-full focus:ring-2 focus:ring-red-500">
+                            <option value="ogretmen">Öğretmen</option>
+                            <option value="admin">Yönetici (Admin)</option>
+                        </select>
+                        <select id="yeniOgrDurum" class="border p-2 rounded text-sm mb-3 w-full focus:ring-2 focus:ring-red-500">
+                            <option value="aktif">Aktif</option>
+                            <option value="pasif">Pasif (Ayrıldı)</option>
+                        </select>
+                        <button onclick="yeniOgretmenEkle()" class="bg-green-600 text-white font-bold py-2 rounded shadow hover:bg-green-700 w-full text-sm">Sisteme Ekle</button>
+                    </div>
+                    <div class="w-full sm:w-2/3 flex flex-col bg-white border rounded-lg shadow-sm overflow-hidden">
+                        <div class="p-3 bg-gray-100 border-b font-bold text-gray-700 text-sm flex justify-between items-center shrink-0">
+                            <span>Sistemdeki Öğretmenler</span>
+                            <button onclick="tumKullanicilariCek()" class="text-xs bg-gray-300 px-2 py-1 rounded hover:bg-gray-400">Yenile 🔄</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-0">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 text-[10px] sm:text-xs text-gray-500 sticky top-0 shadow-sm z-10">
+                                    <tr><th class="p-2 border-b">Ad Soyad</th><th class="p-2 border-b">Yetki</th><th class="p-2 border-b">Durum</th><th class="p-2 border-b text-right">İşlemler</th></tr>
+                                </thead>
+                                <tbody id="userTableBody"><tr><td colspan="4" class="p-4 text-center text-sm text-gray-500">Yükleniyor...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 4 -->
+                <div id="adminPanel-bosta" class="hidden flex-1 flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-hidden">
+                    <div class="w-full sm:w-1/2 flex flex-col bg-white border rounded-lg p-4 shadow-sm h-full overflow-hidden">
+                        <h4 class="font-bold text-gray-800 border-b pb-2 mb-3 text-sm">Görev Atanmayan Aktif Öğretmenler</h4>
+                        <div id="bostaOgretmenlerListesi" class="flex-1 overflow-y-auto space-y-2">
+                            <p class="text-xs text-gray-500">Yükleniyor...</p>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-1/2 flex flex-col bg-white border rounded-lg p-4 shadow-sm h-full overflow-hidden">
+                        <h4 class="font-bold text-gray-800 border-b pb-2 mb-3 text-sm">Boşta Kalan Eylemler</h4>
+                        <div id="bostaEylemlerListesi" class="flex-1 overflow-y-auto space-y-2">
+                            <p class="text-xs text-gray-500">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 5 -->
+                <div id="adminPanel-raporlar" class="hidden flex-1 flex flex-col overflow-hidden bg-white border rounded-lg shadow-sm p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 gap-4 shrink-0">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-lg">PROİZ Genel Raporu</h4>
+                            <p class="text-[10px] sm:text-xs text-gray-500">Seçtiğiniz yıla ait eylem detaylarını listeleyin ve excele aktarın.</p>
+                        </div>
+                        <div class="flex gap-2 items-center w-full sm:w-auto">
+                            <select id="raporYilSelect" class="border p-2 rounded text-sm focus:ring-2 focus:ring-green-500">
+                                <option value="2025-2026">2025-2026</option>
+                                <option value="2026-2027">2026-2027</option>
+                                <option value="2027-2028">2027-2028</option>
+                                <option value="2028-2029">2028-2029</option>
+                            </select>
+                            <button onclick="raporHazirla()" class="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow whitespace-nowrap">Raporu Hazırla</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto border rounded bg-gray-50 relative">
+                        <table id="raporTablosu" class="w-full text-left border-collapse text-xs sm:text-sm">
+                            <thead class="bg-blue-100 text-blue-900 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="p-2 border-b border-r">Eylem No</th>
+                                    <th class="p-2 border-b border-r min-w-[200px]">Eylem Adı</th>
+                                    <th class="p-2 border-b border-r min-w-[150px]">Sorumlular</th>
+                                    <th class="p-2 border-b border-r min-w-[200px]">Açıklama</th>
+                                    <th class="p-2 border-b">Dosya</th>
+                                </tr>
+                            </thead>
+                            <tbody id="raporTableBody">
+                                <tr><td colspan="5" class="p-6 text-center text-gray-500 italic">Yukarıdan yıl seçip "Raporu Hazırla" butonuna basınız.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 text-right shrink-0">
+                        <button onclick="excelIndir()" id="btnExcelIndir" class="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 shadow flex items-center justify-center gap-2 w-full sm:w-auto hidden float-right">
+                            <span>📥 Excel (.xlsx) Olarak İndir</span>
+                        </button>
+                        <div class="clear-both"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL 6 -->
+                <div id="adminPanel-dosyalar" class="hidden flex-1 flex flex-col overflow-hidden bg-white border rounded-lg shadow-sm p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 gap-4 shrink-0">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-lg">📁 Dosya Arşivi</h4>
+                            <p class="text-[10px] sm:text-xs text-gray-500">Tüm eylemlerin yıllara göre yüklenen dosya sayıları.</p>
+                        </div>
+                        <a id="btnDriveAc" href="#" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow flex items-center justify-center gap-2 w-full sm:w-auto">
+                            ☁️ Drive'da Aç ve İndir
+                        </a>
+                    </div>
+                    <div class="flex-1 overflow-auto border rounded bg-gray-50 relative">
+                        <table class="w-full text-center border-collapse text-xs sm:text-sm">
+                            <thead class="bg-gray-200 text-gray-700 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="p-2 border-b border-r text-left min-w-[250px]">Eylem Adı</th>
+                                    <th class="p-2 border-b border-r">25-26</th>
+                                    <th class="p-2 border-b border-r">26-27</th>
+                                    <th class="p-2 border-b border-r">27-28</th>
+                                    <th class="p-2 border-b">28-29</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dosyalarTableBody">
+                                <tr><td colspan="5" class="p-6 text-center text-gray-500">Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST BİLDİRİM KUTUSU -->
+    <div id="toastBox" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <script>
+        // ==========================================
+        // AYARLAR VE ANAHTARLAR
+        // ==========================================
+        const SUPABASE_URL = "https://wlkjevwgevetldksbrlz.supabase.co"; 
+        const SUPABASE_KEY = "sb_publishable_idIooGnafBO1pw5pl0RDCA_vQ1cTosI"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzgXHxGK6qmw6rnxJlyN3wRar7AGkRQ2KfNJHHe7LKsIQ4XuR0SKunTfwPrxtAXjDSCug/exec";
+        
+        const DRIVE_KLASOR_URL = "https://drive.google.com/drive/folders/1wBvG3KXHHxReQsPcMgtgbrgaTUfV1jk8";
+        
+        let dbClient;
+        try { dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } 
+        catch (e) { alert("Veritabanı bağlantısı başlatılamadı."); }
+
+        let currentUser = null;
+        let activeActionId = null;
+        let activeEylemNoObj = null; 
+        let activeYear = '2025-2026';
+        let activeYearDataId = null; 
+        
+        let tumKullanicilar = [];
+        let tumEylemler = [];
+        let mevcutDosyaSayisi = 0; 
+
+        const YILLAR = ['2025-2026', '2026-2027', '2027-2028', '2028-2029'];
+        let yilIstek = 0, dosyaMap = {}, eylemMap = {};
+        
+        // XSS Koruması
+        function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        
+        // Modern Toast Bildirimleri
+        function toast(msg) {
+            const d = document.createElement('div');
+            const hata = /hata|başarısız|çok büyük|🛑|eklenemedi|uyuşmuyor|hatalı|lütfen|seçiniz|doldurun|en az|pasif/i.test(msg);
+            d.className = 'px-4 py-3 rounded-lg shadow-lg text-sm text-white whitespace-pre-line pointer-events-auto transition-opacity ' + (hata ? 'bg-red-600' : 'bg-green-600');
+            d.textContent = msg;
+            document.getElementById('toastBox').appendChild(d);
+            setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 300); }, 4000);
+        }
+        window.alert = toast;
+        
+        function eylemDetayAcId(id) { eylemDetayAc(eylemMap[id]); }
+        
+        // Arama Çubuğu
+        function kartFiltrele() {
+            const q = (document.getElementById('kartAra').value || '').toLowerCase().trim();
+            const t = document.getElementById('kartTur').value;
+            document.querySelectorAll('#cardsContainer > div[data-ara]').forEach(c => c.classList.toggle('hidden', !(c.dataset.ara.includes(q) && (!t || c.dataset.tur === t))));
+        }
+        
+        // Kısayol Tuşları (Enter / Esc)
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.closest('#loginScreen')) sistemeGirisYap();
+            if (e.key === 'Escape') { kapatModal(); document.getElementById('adminModal').classList.add('hidden'); }
+        });
+
+        // ==========================================
+        // GİRİŞ İŞLEMLERİ
+        // ==========================================
+        async function sistemeGirisYap() {
+            const btnGiris = document.getElementById('btnGiris');
+            try {
+                const tckn = document.getElementById('loginTckn').value.trim();
+                const sifre = document.getElementById('loginSifre').value;
+                if(!tckn || !sifre) return alert("Lütfen boş alan bırakmayın.");
+                
+                btnGiris.innerText = "Sorgulanıyor..."; btnGiris.disabled = true;
+
+                const { data, error } = await dbClient.from('kullanicilar').select('*').eq('tckn', tckn).eq('sifre', sifre).single();
+                if (error || !data) { alert("TCKN veya Şifre hatalı!"); btnGiris.innerText = "Giriş Yap"; btnGiris.disabled = false; return; }
+                if(data.durum === 'pasif' || data.rol === 'pasif') { alert("Hesabınız pasif durumdadır."); btnGiris.innerText = "Giriş Yap"; btnGiris.disabled = false; return; }
+
+                currentUser = data;
+                if (data.sifre_degisti_mi === false) {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('passwordScreen').classList.remove('hidden');
+                } else { basariliGirisIslemleri(); }
+                
+                btnGiris.innerText = "Giriş Yap"; btnGiris.disabled = false;
+            } catch (e) { alert("Hata: " + e.message); btnGiris.innerText = "Giriş Yap"; btnGiris.disabled = false; }
+        }
+
+        function basariliGirisIslemleri() {
+            document.getElementById('welcomeUser').innerText = currentUser.ad_soyad;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('passwordScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.remove('hidden');
+            
+            if(['admin', 'owner'].includes(currentUser.rol)) {
+                document.getElementById('btnAdminPanel').classList.remove('hidden');
+            }
+            eylemleriGetir();
+        }
+
+        async function sifreDegistir() {
+            const s1 = document.getElementById('newSifre1').value;
+            const s2 = document.getElementById('newSifre2').value;
+            if(s1 !== s2) return alert("Şifreler uyuşmuyor!");
+            if(s1.length < 5) return alert("Şifreniz en az 5 karakter olmalıdır.");
+
+            const { error } = await dbClient.from('kullanicilar').update({ sifre: s1, sifre_degisti_mi: true }).eq('tckn', currentUser.tckn);
+            if(!error) { alert("Şifreniz güncellendi!"); currentUser.sifre_degisti_mi = true; basariliGirisIslemleri(); } 
+            else alert("Hata: " + error.message);
+        }
+
+        function cikisYap() { window.location.reload(); }
+
+        // ==========================================
+        // ANA PANO EYLEM GETİRME
+        // ==========================================
+        async function eylemleriGetir() {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '<p class="text-gray-500 text-center col-span-1 md:col-span-3">Eylemleriniz yükleniyor...</p>';
+
+            let sorgu = ['admin', 'owner'].includes(currentUser.rol)
+                ? dbClient.from('eylemler').select('*') 
+                : dbClient.from('gorevlendirmeler').select('eylemler(*)').eq('tckn', currentUser.tckn);
+            
+            const [{ data, error }, { data: atamalarData }] = await Promise.all([
+                sorgu, 
+                dbClient.from('gorevlendirmeler').select('eylem_id, kullanicilar(ad_soyad, durum, rol)')
+            ]);
+            
+            if(error) { container.innerHTML = '<p class="text-red-500 col-span-1 md:col-span-3">Hata: ' + error.message + '</p>'; return; }
+
+            let atamaMap = {};
+            if(atamalarData) {
+                atamalarData.forEach(g => {
+                    if(!atamaMap[g.eylem_id]) atamaMap[g.eylem_id] = [];
+                    if(g.kullanicilar) {
+                        let k = g.kullanicilar;
+                        let isPasif = (k.durum === 'pasif' || k.rol === 'pasif');
+                        atamaMap[g.eylem_id].push({ad: k.ad_soyad, pasif: isPasif});
+                    }
+                });
+            }
+
+            let eylemlerListesi = [];
+            data.forEach(item => {
+                const eylem = ['admin', 'owner'].includes(currentUser.rol) ? item : item.eylemler; 
+                if(eylem) eylemlerListesi.push(eylem);
+            });
+
+            if(eylemlerListesi.length === 0) {
+                container.innerHTML = '<p class="text-red-500 col-span-1 md:col-span-3">Gösterilecek eylem bulunamadı.</p>';
+                return;
+            }
+
+            eylemlerListesi.sort((a, b) => {
+                if (a.proje_turu === 'Okul Gelişim' && b.proje_turu === 'Okul Özel') return -1;
+                if (a.proje_turu === 'Okul Özel' && b.proje_turu === 'Okul Gelişim') return 1;
+                let padA = a.eylem_no.split('.').map(n => n.padStart(3, '0')).join('');
+                let padB = b.eylem_no.split('.').map(n => n.padStart(3, '0')).join('');
+                return padA.localeCompare(padB);
+            });
+
+            let _h = '';
+            eylemlerListesi.forEach(eylem => {
+                const isGelisim = eylem.proje_turu === 'Okul Gelişim';
+                const colorClass = isGelisim ? 'card-gelisim' : 'card-ozel';
+                const tagColor = isGelisim ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800';
+                
+                let sorumlularHtml = 'Atama Yok';
+                let sorumlularPlain = 'Atama Yok';
+                if(atamaMap[eylem.id] && atamaMap[eylem.id].length > 0) {
+                    sorumlularPlain = atamaMap[eylem.id].map(k => k.ad).join(', ');
+                    sorumlularHtml = atamaMap[eylem.id].map(k => 
+                        k.pasif ? `<span class="text-gray-400 italic">${esc(k.ad)}</span>` : `<span class="text-gray-700 font-semibold">${esc(k.ad)}</span>`
+                    ).join(', ');
+                }
+
+                eylemMap[eylem.id] = eylem;
+
+                _h += `
+                    <div class="bg-white rounded-xl shadow hover:shadow-lg transition-shadow p-4 sm:p-5 flex flex-col justify-between ${colorClass} cursor-pointer h-full" data-ara="${esc((eylem.eylem_no + ' ' + eylem.eylem_adi + ' ' + sorumlularPlain).toLowerCase())}" data-tur="${esc(eylem.proje_turu)}" onclick="eylemDetayAcId('${eylem.id}')">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="${tagColor} text-[10px] sm:text-xs font-bold px-2 py-1 rounded">${esc(eylem.eylem_no)}</span>
+                                <span class="text-[10px] text-gray-400 font-medium border px-1.5 py-0.5 rounded bg-gray-50">${esc(eylem.proje_turu)}</span>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2 leading-snug">${esc(eylem.eylem_adi)}</h3>
+                        </div>
+                        <div class="mt-auto border-t pt-3 flex flex-col gap-2">
+                            <span class="truncate w-full block text-left text-[10px] sm:text-xs text-gray-500" title="${esc(sorumlularPlain)}">Sorumlular: ${sorumlularHtml}</span>
+                            <span class="text-blue-600 text-xs sm:text-sm font-bold hover:underline self-end">Detaylar &rarr;</span>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = _h;
+            kartFiltrele();
+        }
+
+        // ==========================================
+        // DETAY MODALI VE DOSYALAR
+        // ==========================================
+        async function eylemDetayAc(eylemObj) {
+            activeActionId = eylemObj.id;
+            activeEylemNoObj = eylemObj; 
+            document.getElementById('modalEylemNo').innerText = eylemObj.eylem_no;
+            document.getElementById('modalEylemAdi').innerText = eylemObj.eylem_adi;
+            document.getElementById('actionModal').classList.remove('hidden');
+            
+            document.getElementById('sorumluOgretmenler').innerHTML = "Sorumlular: Yükleniyor...";
+            const { data: sData } = await dbClient.from('gorevlendirmeler').select('kullanicilar(ad_soyad, durum, rol)').eq('eylem_id', eylemObj.id);
+            if(sData) {
+                const isimlerHtml = sData.filter(d => d.kullanicilar).map(d => {
+                    let k = d.kullanicilar;
+                    let isPasif = (k.durum === 'pasif' || k.rol === 'pasif');
+                    return isPasif ? `<span class="text-gray-400 italic">${esc(k.ad_soyad)}</span>` : `<span class="font-semibold text-gray-700">${esc(k.ad_soyad)}</span>`;
+                }).join(', ');
+                document.getElementById('sorumluOgretmenler').innerHTML = "Sorumlular: " + (isimlerHtml || 'Henüz atama yapılmamış');
+            }
+            yilSec('2025-2026'); 
+        }
+
+        function kapatModal() { document.getElementById('actionModal').classList.add('hidden'); activeActionId = null; }
+
+        async function yilSec(yil) {
+            activeYear = yil;
+            let yillar = YILLAR;
+            yillar.forEach(y => {
+                const btn = document.getElementById('tab-' + y);
+                if(y === yil) { btn.classList.add('tab-active'); btn.classList.remove('text-gray-500'); } 
+                else { btn.classList.remove('tab-active'); btn.classList.add('text-gray-500'); }
+            });
+
+            const isAdmin = ['admin', 'owner'].includes(currentUser.rol);
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.disabled = (!isAdmin);
+                if(!isAdmin) el.classList.add('bg-gray-100'); else el.classList.remove('bg-gray-100');
+            });
+
+            const istek = ++yilIstek;
+            const { data } = await dbClient.from('yillik_veriler').select('*').eq('eylem_id', activeActionId).eq('yil', activeYear).maybeSingle();
+            if (istek !== yilIstek) return;
+            
+            if(data) {
+                activeYearDataId = data.id;
+                document.getElementById('inpTarihBas').value = data.baslama_tarihi || '';
+                document.getElementById('inpTarihBit').value = data.bitis_tarihi || '';
+                document.getElementById('inpButce').value = data.butce || 0;
+                document.getElementById('proizAciklama').value = data.aciklama || '';
+            } else {
+                activeYearDataId = null;
+                document.getElementById('inpTarihBas').value = '';
+                document.getElementById('inpTarihBit').value = '';
+                document.getElementById('inpButce').value = 0;
+                document.getElementById('proizAciklama').value = '';
+            }
+            dosyalariGetir();
+        }
+
+        async function yillikVeriKaydet() {
+            const bas = document.getElementById('inpTarihBas').value || null;
+            const bit = document.getElementById('inpTarihBit').value || null;
+            const butce = document.getElementById('inpButce').value || 0;
+            const aciklama = document.getElementById('proizAciklama').value;
+            const veri = { eylem_id: activeActionId, yil: activeYear, baslama_tarihi: bas, bitis_tarihi: bit, butce: butce, aciklama: aciklama };
+
+            if(activeYearDataId) {
+                const { error } = await dbClient.from('yillik_veriler').update(veri).eq('id', activeYearDataId);
+                if(!error) toast("Bilgiler başarıyla güncellendi!"); else toast("Hata: " + error.message);
+            } else {
+                const { data, error } = await dbClient.from('yillik_veriler').insert(veri).select().single();
+                if(!error) { toast("Bilgiler başarıyla kaydedildi!"); activeYearDataId = data.id; } 
+                else toast("Hata: " + error.message);
+            }
+        }
+
+        async function dosyalariGetir() {
+            const liste = document.getElementById('dosyaListesi');
+            liste.innerHTML = '<li class="text-xs text-gray-500 p-2">Dosyalar yükleniyor...</li>';
+
+            const { data, error } = await dbClient.from('kanit_dosyalar').select('*, kullanicilar(ad_soyad)').eq('eylem_id', activeActionId).like('dosya_adi', `${activeYear}%`); 
+
+            liste.innerHTML = '';
+            if (error || !data || data.length === 0) {
+                mevcutDosyaSayisi = 0;
+                liste.innerHTML = '<li class="text-xs text-gray-500 border border-dashed rounded p-3 text-center">Bu yıla ait dosya bulunamadı.</li>';
+                return;
+            }
+            
+            mevcutDosyaSayisi = data.length;
+            let _h = ''; dosyaMap = {};
+            
+            data.forEach(dosya => {
+                dosyaMap[dosya.id] = dosya.dosya_url;
+                let yuk = dosya.kullanicilar ? dosya.kullanicilar.ad_soyad : 'Bilinmiyor';
+                let temizAd = dosya.dosya_adi.replace(activeYear+"_", ""); 
+                _h += `
+                    <li class="flex justify-between items-center bg-gray-100 p-1.5 sm:p-2 rounded border gap-2">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="text-sm sm:text-base">📄</span>
+                            <div class="overflow-hidden">
+                                <a href="${esc(dosya.dosya_url)}" target="_blank" rel="noopener noreferrer" class="text-[11px] sm:text-xs font-semibold text-blue-700 hover:underline block truncate w-40 sm:w-80" title="${esc(temizAd)}">${esc(temizAd)}</a>
+                                <p class="text-[9px] sm:text-[10px] text-gray-500">Yükleyen: ${esc(yuk)}</p>
+                            </div>
+                        </div>
+                        <button onclick="dosyaSil(${dosya.id})" class="text-red-500 hover:bg-red-100 p-1 sm:p-1.5 rounded text-[10px] transition font-bold border border-red-200 shrink-0">Sil</button>
+                    </li>`;
+            });
+            liste.innerHTML = _h;
+        }
+
+        async function dosyaYukleDrive() {
+            if (mevcutDosyaSayisi >= 5) return alert("🛑 Bu yıl için en fazla 5 dosya yükleyebilirsiniz.\nYeni dosya eklemek için eskilerden birini silmelisiniz.");
+            
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) return;
+            const file = fileInput.files[0];
+            
+            if (file.size > 10485760) {
+                fileInput.value = '';
+                return alert(`🛑 Seçtiğiniz dosya çok büyük.\nEn fazla 10 MB boyutunda bir dosya seçin.\n(Sizin dosyanız: ${(file.size/(1024*1024)).toFixed(2)} MB)`);
+            }
+
+            const btnText = document.getElementById('btnUploadText');
+            btnText.innerText = "Yükleniyor...";
+            document.getElementById('fileInput').disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const base64Data = reader.result.split(',')[1];
+                    const formData = new URLSearchParams();
+                    
+                    formData.append('action', 'upload');
+                    formData.append('fileData', base64Data);
+                    formData.append('mimeType', file.type);
+                    formData.append('fileName', file.name); 
+                    formData.append('year', activeYear); 
+                    
+                    let folderAdi = activeEylemNoObj.eylem_no + " - " + activeEylemNoObj.eylem_adi.substring(0, 30);
+                    formData.append('folderName', folderAdi);
+
+                    const response = await fetch(GAS_URL, { method: 'POST', body: formData });
+                    const result = await response.json();
+
+                    if(result.status === 'success') {
+                        const dsAd = activeYear + "_" + file.name;
+                        const { error: dbError } = await dbClient.from('kanit_dosyalar').insert({ eylem_id: activeActionId, yukleyen_tckn: currentUser.tckn, dosya_adi: dsAd, dosya_url: result.url });
+                        if(!dbError) { toast("✅ Dosya başarıyla yüklendi!"); dosyalariGetir(); } 
+                        else { alert("Veritabanına yazılamadı: " + dbError.message); }
+                    } else { alert("Yükleme Hatası: " + result.message); }
+                } catch (e) { alert("Bağlantı hatası oluştu."); } 
+                finally { btnText.innerText = "+ Yeni Dosya Yükle"; document.getElementById('fileInput').disabled = false; fileInput.value = ''; }
+            };
+            reader.readAsDataURL(file); 
+        }
+
+        async function dosyaSil(dosyaId) {
+            const dosyaUrl = dosyaMap[dosyaId];
+            if(!confirm("⚠️ DİKKAT!\nBu işlem dosyayı kalıcı olarak silecektir.\nEmin misiniz?")) return;
+            try {
+                const formData = new URLSearchParams();
+                formData.append('action', 'delete');
+                formData.append('fileUrl', dosyaUrl);
+                await fetch(GAS_URL, { method: 'POST', body: formData }); 
+                
+                const { error } = await dbClient.from('kanit_dosyalar').delete().eq('id', dosyaId);
+                if(!error) { toast("Dosya kalıcı olarak silindi."); dosyalariGetir(); } 
+                else alert("Veritabanından silinirken hata oluştu.");
+            } catch(e) { alert("Hata: " + e.message); }
+        }
+
+        // ==========================================
+        // YÖNETİCİ PANELİ (ATAMA VE KULLANICI)
+        // ==========================================
+        async function adminPanelAc() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('btnDriveAc').href = DRIVE_KLASOR_URL;
+            
+            tumKullanicilariCek();
+            
+            if(tumEylemler.length === 0) {
+                const { data } = await dbClient.from('eylemler').select('*');
+                if(data) {
+                    tumEylemler = data.sort((a,b) => {
+                        if (a.proje_turu === 'Okul Gelişim' && b.proje_turu === 'Okul Özel') return -1;
+                        if (a.proje_turu === 'Okul Özel' && b.proje_turu === 'Okul Gelişim') return 1;
+                        let padA = a.eylem_no.split('.').map(n => n.padStart(3, '0')).join('');
+                        let padB = b.eylem_no.split('.').map(n => n.padStart(3, '0')).join('');
+                        return padA.localeCompare(padB);
+                    });
+                }
+                let eylHtml = '<option value="">-- Eylem Seçiniz --</option>';
+                tumEylemler.forEach(e => eylHtml += `<option value="${e.id}">${esc(e.eylem_no)} - ${esc(e.eylem_adi.substring(0,50))}...</option>`);
+                document.getElementById('adminEylemSelect').innerHTML = eylHtml;
+            }
+            adminTabSec('eylemden');
+        }
+
+        async function tumKullanicilariCek() {
+            document.getElementById('userTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4">Yükleniyor...</td></tr>';
+            const { data } = await dbClient.from('kullanicilar').select('*').order('ad_soyad');
+            if(data) {
+                tumKullanicilar = data;
+                
+                let ogrHtml = '<option value="">-- Öğretmen Seçiniz --</option>';
+                tumKullanicilar.forEach(k => {
+                    let isPasif = (k.durum === 'pasif' || k.rol === 'pasif');
+                    ogrHtml += `<option value="${k.tckn}" ${isPasif ? 'class="text-gray-400 italic"' : ''}>${esc(k.ad_soyad)} ${isPasif ? '(Ayrıldı)' : ''}</option>`;
+                });
+                document.getElementById('adminOgretmenSelect').innerHTML = ogrHtml;
+                if(document.getElementById('adminEylemSelect').value !== "") adminEylemSecildi(); 
+
+                let tbodyHtml = '';
+                tumKullanicilar.forEach(k => {
+                    let isOwner = (k.rol === 'owner');
+                    let rolSutunu = '';
+                    
+                    if(isOwner) {
+                        rolSutunu = `<span class="text-[10px] sm:text-xs font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded">Kurucu</span>`;
+                    } else {
+                        rolSutunu = `
+                            <select onchange="rolDegistir('${k.tckn}', this.value)" class="border rounded p-1 text-[10px] sm:text-xs font-semibold ${k.rol==='admin'?'bg-red-50 text-red-700':''}">
+                                <option value="ogretmen" ${k.rol==='ogretmen'?'selected':''}>Öğretmen</option>
+                                <option value="admin" ${k.rol==='admin'?'selected':''}>Admin</option>
+                            </select>`;
+                    }
+
+                    tbodyHtml += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2 text-xs sm:text-sm font-bold text-gray-800">${esc(k.ad_soyad)}</td>
+                        <td class="p-2">${rolSutunu}</td>
+                        <td class="p-2">
+                            <select onchange="durumDegistir('${k.tckn}', this.value)" class="border rounded p-1 text-[10px] sm:text-xs font-semibold ${k.durum==='pasif'?'bg-gray-200 text-gray-600':'bg-green-50 text-green-700'}">
+                                <option value="aktif" ${k.durum==='aktif'?'selected':''}>Aktif</option>
+                                <option value="pasif" ${k.durum==='pasif'?'selected':''}>Pasif (Ayrıldı)</option>
+                            </select>
+                        </td>
+                        <td class="p-2 text-right">
+                            <button onclick="sifreSifirla('${k.tckn}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-[10px] sm:text-xs font-bold hover:bg-yellow-600 shadow">🔑 Sıfırla</button>
+                        </td>
+                    </tr>`;
+                });
+                document.getElementById('userTableBody').innerHTML = tbodyHtml;
+            }
+        }
+
+        function adminTabSec(tab) {
+            const btns = ['eylemden', 'ogretmenden', 'kullanici', 'bosta', 'raporlar', 'dosyalar'];
+            btns.forEach(b => {
+                const element = document.getElementById('admtab-' + b);
+                const panel = document.getElementById('adminPanel-' + b);
+                if(b === tab) {
+                    element.className = "py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold tab-active border-red-600 text-red-600";
+                    panel.classList.remove('hidden');
+                } else {
+                    element.className = "py-2 sm:py-3 px-3 sm:px-4 text-sm font-semibold text-gray-500 hover:text-gray-800";
+                    panel.classList.add('hidden');
+                }
+            });
+            
+            if(tab === 'bosta') bostaVerileriGetir();
+            if(tab === 'dosyalar') dosyalarVerileriniGetir();
+        }
+
+        // Atama Fonksiyonları
+        async function adminEylemSecildi() {
+            const eylemId = document.getElementById('adminEylemSelect').value;
+            const liste = document.getElementById('adminOgretmenListesi');
+            if(!eylemId) return liste.innerHTML = '';
+            
+            const { data } = await dbClient.from('gorevlendirmeler').select('tckn').eq('eylem_id', eylemId);
+            const atanan = data ? data.map(d => d.tckn) : [];
+            let html = '';
+            tumKullanicilar.forEach(k => {
+                let isPasif = (k.durum === 'pasif' || k.rol === 'pasif');
+                let style = isPasif ? "text-gray-400 italic" : "text-gray-700";
+                let text = k.ad_soyad + (isPasif ? " (Ayrıldı)" : "");
+                html += `<label class="flex items-center gap-2 cursor-pointer hover:bg-red-50 p-1.5 rounded border border-transparent hover:border-red-100 transition"><input type="checkbox" value="${k.tckn}" class="cb-tckn w-4 h-4 text-red-600" ${atanan.includes(k.tckn)?'checked':''}> <span class="text-xs sm:text-sm font-medium ${style}">${esc(text)}</span></label>`;
+            });
+            liste.innerHTML = html;
+        }
+
+        async function adminEylemIcinKaydet() {
+            const eylemId = document.getElementById('adminEylemSelect').value;
+            if(!eylemId) return alert("Eylem seçiniz!");
+            const arr = Array.from(document.querySelectorAll('.cb-tckn')).filter(cb => cb.checked).map(cb => cb.value);
+            
+            const { data: mevcut } = await dbClient.from('gorevlendirmeler').select('tckn').eq('eylem_id', eylemId);
+            const eski = (mevcut || []).map(d => String(d.tckn));
+            const eklenecek = arr.filter(t => !eski.includes(t)), silinecek = eski.filter(t => !arr.includes(t));
+            
+            let hata = null;
+            if (eklenecek.length) hata = (await dbClient.from('gorevlendirmeler').insert(eklenecek.map(t => ({ eylem_id: eylemId, tckn: t })))).error;
+            if (!hata && silinecek.length) hata = (await dbClient.from('gorevlendirmeler').delete().eq('eylem_id', eylemId).in('tckn', silinecek)).error;
+            
+            if (hata) alert("Hata: " + hata.message); else toast("Atamalar güncellendi!");
+            eylemleriGetir();
+        }
+
+        async function adminOgretmenSecildi() {
+            const tckn = document.getElementById('adminOgretmenSelect').value;
+            const liste = document.getElementById('adminEylemListesi');
+            if(!tckn) return liste.innerHTML = '';
+            
+            const { data } = await dbClient.from('gorevlendirmeler').select('eylem_id').eq('tckn', tckn);
+            const atanan = data ? data.map(d => d.eylem_id) : [];
+            let html = '';
+            tumEylemler.forEach(e => {
+                html += `<label class="flex items-start gap-2 cursor-pointer hover:bg-red-50 p-1.5 rounded border border-transparent hover:border-red-100 transition"><input type="checkbox" value="${e.id}" class="cb-eylem w-4 h-4 text-red-600 mt-0.5" ${atanan.includes(e.id)?'checked':''}> <div class="flex flex-col"><span class="text-[10px] font-bold text-red-700 bg-red-100 px-1 rounded w-max mb-1">${esc(e.eylem_no)}</span><span class="text-xs sm:text-sm font-medium leading-tight">${esc(e.eylem_adi)}</span></div></label>`;
+            });
+            liste.innerHTML = html;
+        }
+
+        async function adminOgretmenIcinKaydet() {
+            const tckn = document.getElementById('adminOgretmenSelect').value;
+            if(!tckn) return alert("Öğretmen seçiniz!");
+            const arr = Array.from(document.querySelectorAll('.cb-eylem')).filter(cb => cb.checked).map(cb => cb.value);
+            
+            const { data: mevcut } = await dbClient.from('gorevlendirmeler').select('eylem_id').eq('tckn', tckn);
+            const eski = (mevcut || []).map(d => String(d.eylem_id));
+            const eklenecek = arr.filter(t => !eski.includes(t)), silinecek = eski.filter(t => !arr.includes(t));
+            
+            let hata = null;
+            if (eklenecek.length) hata = (await dbClient.from('gorevlendirmeler').insert(eklenecek.map(e => ({ tckn: tckn, eylem_id: e })))).error;
+            if (!hata && silinecek.length) hata = (await dbClient.from('gorevlendirmeler').delete().eq('tckn', tckn).in('eylem_id', silinecek)).error;
+            
+            if (hata) alert("Hata: " + hata.message); else toast("Atamalar güncellendi!");
+            eylemleriGetir();
+        }
+
+        // BOŞTA Modülü
+        async function bostaVerileriGetir() {
+            const ogrContainer = document.getElementById('bostaOgretmenlerListesi');
+            const eylemContainer = document.getElementById('bostaEylemlerListesi');
+            ogrContainer.innerHTML = '<p class="text-sm text-gray-500">Yükleniyor...</p>';
+            eylemContainer.innerHTML = '<p class="text-sm text-gray-500">Yükleniyor...</p>';
+
+            const { data: gorevData } = await dbClient.from('gorevlendirmeler').select('*');
+            const atamalar = gorevData || [];
+
+            let aktifOgretmenler = tumKullanicilar.filter(k => k.durum !== 'pasif' && k.rol !== 'pasif');
+            let atananTcknler = new Set(atamalar.map(g => g.tckn));
+            let bostaOgretmenler = aktifOgretmenler.filter(k => !atananTcknler.has(k.tckn));
+
+            if(bostaOgretmenler.length === 0) {
+                ogrContainer.innerHTML = '<p class="text-sm text-green-600 font-bold p-2">Görev atanmayan öğretmen bulunmamaktadır.</p>';
+            } else {
+                ogrContainer.innerHTML = bostaOgretmenler.map(k => `<div class="p-2 bg-white border rounded text-sm text-gray-700 font-medium shadow-sm mb-1">${esc(k.ad_soyad)}</div>`).join('');
+            }
+
+            let aktifTcknSet = new Set(aktifOgretmenler.map(k => k.tckn));
+            let bostaEylemler = tumEylemler.filter(e => {
+                let eyleminAtamalari = atamalar.filter(g => g.eylem_id === e.id);
+                if(eyleminAtamalari.length === 0) return true; 
+                let aktifAtamaVarMi = eyleminAtamalari.some(g => aktifTcknSet.has(g.tckn));
+                return !aktifAtamaVarMi;
+            });
+
+            if(bostaEylemler.length === 0) {
+                eylemContainer.innerHTML = '<p class="text-sm text-green-600 font-bold p-2">Öğretmen atanmayan görev bulunmamaktadır.</p>';
+            } else {
+                eylemContainer.innerHTML = bostaEylemler.map(e => {
+                    let eyleminAtamalari = atamalar.filter(g => g.eylem_id === e.id);
+                    let altMetin = "";
+                    
+                    if (eyleminAtamalari.length === 0) {
+                        altMetin = '<span class="text-xs text-red-500 italic mt-1 font-semibold">Atanmış öğretmen yok</span>';
+                    } else {
+                        let pasifIsimler = eyleminAtamalari.map(g => {
+                            let hoca = tumKullanicilar.find(k => k.tckn === g.tckn);
+                            return hoca ? hoca.ad_soyad : 'Bilinmeyen';
+                        }).join(', ');
+                        altMetin = `<span class="text-xs text-gray-500 italic mt-1 font-medium">Pasif Sorumlular: ${esc(pasifIsimler)}</span>`;
+                    }
+
+                    return `
+                    <div class="p-2 bg-white border rounded shadow-sm mb-1 flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold ${e.proje_turu==='Okul Gelişim'?'text-blue-700 bg-blue-100':'text-pink-700 bg-pink-100'} px-2 py-0.5 rounded w-max shrink-0">${esc(e.eylem_no)}</span>
+                            <span class="text-sm text-gray-700 font-medium leading-tight">${esc(e.eylem_adi)}</span>
+                        </div>
+                        ${altMetin}
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        async function yeniOgretmenEkle() {
+            const tckn = document.getElementById('yeniOgrTckn').value;
+            const ad = document.getElementById('yeniOgrAd').value;
+            const sifre = document.getElementById('yeniOgrSifre').value;
+            const rol = document.getElementById('yeniOgrRol').value;
+            const durum = document.getElementById('yeniOgrDurum').value;
+            if(!tckn || !ad || !sifre) return alert("Tüm alanları doldurun.");
+            const { error } = await dbClient.from('kullanicilar').insert({ tckn: tckn, ad_soyad: ad, sifre: sifre, rol: rol, durum: durum, sifre_degisti_mi: false });
+            if(error) alert("Eklenemedi: " + error.message);
+            else { toast("Öğretmen eklendi!"); tumKullanicilariCek(); }
+        }
+
+        async function rolDegistir(tckn, yeniRol) { const { error } = await dbClient.from('kullanicilar').update({rol: yeniRol}).eq('tckn', tckn); if (error) { alert('Hata: ' + error.message); tumKullanicilariCek(); } else toast('Yetki güncellendi.'); }
+        async function durumDegistir(tckn, yeniDurum) { const { error } = await dbClient.from('kullanicilar').update({durum: yeniDurum}).eq('tckn', tckn); if (error) alert('Hata: ' + error.message); tumKullanicilariCek(); }
+        async function sifreSifirla(tckn) {
+            const adSoyad = (tumKullanicilar.find(x => x.tckn === tckn) || {}).ad_soyad || '';
+            const yeniSifre = prompt(`⚠️ ${adSoyad} öğretmenin geçici şifresi:`);
+            if(yeniSifre && yeniSifre.trim() !== '') {
+                await dbClient.from('kullanicilar').update({sifre: yeniSifre, sifre_degisti_mi: false}).eq('tckn', tckn);
+                toast("Şifre sıfırlandı!");
+            }
+        }
+
+        // ==========================================
+        // EXCEL RAPORLARI 
+        // ==========================================
+        async function raporHazirla() {
+            const yil = document.getElementById('raporYilSelect').value;
+            const tbody = document.getElementById('raporTableBody');
+            const btnIndir = document.getElementById('btnExcelIndir');
+            
+            tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500">Veriler çekiliyor, bekleyin...</td></tr>';
+            btnIndir.classList.add('hidden');
+
+            try {
+                const [resGorevler, resYillik, resDosyalar] = await Promise.all([
+                    dbClient.from('gorevlendirmeler').select('eylem_id, kullanicilar(ad_soyad)'),
+                    dbClient.from('yillik_veriler').select('eylem_id, aciklama').eq('yil', yil),
+                    dbClient.from('kanit_dosyalar').select('eylem_id').like('dosya_adi', `${yil}%`)
+                ]);
+
+                let atamaMap = {};
+                if(resGorevler.data) {
+                    resGorevler.data.forEach(g => {
+                        if(!atamaMap[g.eylem_id]) atamaMap[g.eylem_id] = [];
+                        if(g.kullanicilar) atamaMap[g.eylem_id].push(g.kullanicilar.ad_soyad);
+                    });
+                }
+
+                let aciklamaMap = {};
+                if(resYillik.data) resYillik.data.forEach(y => aciklamaMap[y.eylem_id] = y.aciklama);
+
+                let dosyaSayisiMap = {};
+                if(resDosyalar.data) resDosyalar.data.forEach(d => dosyaSayisiMap[d.eylem_id] = (dosyaSayisiMap[d.eylem_id] || 0) + 1);
+
+                let _h = '';
+                tumEylemler.forEach(eylem => {
+                    const sorumlular = atamaMap[eylem.id] ? atamaMap[eylem.id].join(', ') : 'Atama Yok';
+                    const aciklama = aciklamaMap[eylem.id] || 'Girilmedi';
+                    const dosyaSayisi = dosyaSayisiMap[eylem.id] || 0;
+
+                    _h += `
+                    <tr class="hover:bg-gray-100 border-b bg-white">
+                        <td class="p-2 border-r font-bold text-gray-700">${esc(eylem.eylem_no)}</td>
+                        <td class="p-2 border-r font-medium text-gray-800">${esc(eylem.eylem_adi)}</td>
+                        <td class="p-2 border-r text-xs text-gray-600">${esc(sorumlular)}</td>
+                        <td class="p-2 border-r text-xs text-gray-600 truncate max-w-xs" title="${esc(aciklama)}">${esc(aciklama)}</td>
+                        <td class="p-2 font-bold text-center ${dosyaSayisi > 0 ? 'text-green-600' : 'text-red-500'}">${dosyaSayisi}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = _h;
+                btnIndir.classList.remove('hidden'); 
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-500">Hata: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function excelIndir() {
+            if (!window.XLSX) {
+                try { 
+                    toast("Excel modülü yükleniyor, bekleyiniz...");
+                    await new Promise((ok, err) => { const sc = document.createElement('script'); sc.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js'; sc.onload = ok; sc.onerror = () => err(); document.head.appendChild(sc); }); 
+                }
+                catch (e) { return alert('Hata: Excel kütüphanesi yüklenemedi.'); }
+            }
+            const yil = document.getElementById('raporYilSelect').value;
+            const tablo = document.getElementById('raporTablosu');
+            const workbook = XLSX.utils.table_to_book(tablo, {sheet: yil});
+            const sheet = workbook.Sheets[yil];
+            sheet['!cols'] = [{wch: 10}, {wch: 50}, {wch: 30}, {wch: 60}, {wch: 10}];
+            XLSX.writeFile(workbook, `KONYA_LISESI_PROIZ_Raporu_${yil}.xlsx`);
+        }
+
+        // ==========================================
+        // 7. DOSYALAR PANELİ (MATRİS)
+        // ==========================================
+        async function dosyalarVerileriniGetir() {
+            const tbody = document.getElementById('dosyalarTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500">Dosya istatistikleri çekiliyor...</td></tr>';
+
+            const { data } = await dbClient.from('kanit_dosyalar').select('eylem_id, dosya_adi');
+            
+            let matrix = {};
+            tumEylemler.forEach(e => {
+                matrix[e.id] = { '2025-2026': 0, '2026-2027': 0, '2027-2028': 0, '2028-2029': 0 };
+            });
+
+            if(data) {
+                data.forEach(d => {
+                    let eId = d.eylem_id;
+                    let ad = d.dosya_adi;
+                    if(matrix[eId]) {
+                        if(ad.startsWith('2025-2026')) matrix[eId]['2025-2026']++;
+                        else if(ad.startsWith('2026-2027')) matrix[eId]['2026-2027']++;
+                        else if(ad.startsWith('2027-2028')) matrix[eId]['2027-2028']++;
+                        else if(ad.startsWith('2028-2029')) matrix[eId]['2028-2029']++;
+                    }
+                });
+            }
+
+            let _h = '';
+            tumEylemler.forEach(e => {
+                let m = matrix[e.id];
+                _h += `
+                <tr class="hover:bg-gray-100 border-b bg-white">
+                    <td class="p-2 border-r text-left flex items-start gap-1">
+                        <span class="text-[10px] font-bold text-blue-700 shrink-0 mt-0.5">${esc(e.eylem_no)}</span> 
+                        <span class="text-xs font-medium text-gray-800 leading-tight">${esc(e.eylem_adi)}</span>
+                    </td>
+                    <td class="p-2 border-r font-bold ${m['2025-2026']>0?'text-green-600':'text-gray-300'}">${m['2025-2026']}</td>
+                    <td class="p-2 border-r font-bold ${m['2026-2027']>0?'text-green-600':'text-gray-300'}">${m['2026-2027']}</td>
+                    <td class="p-2 border-r font-bold ${m['2027-2028']>0?'text-green-600':'text-gray-300'}">${m['2027-2028']}</td>
+                    <td class="p-2 font-bold ${m['2028-2029']>0?'text-green-600':'text-gray-300'}">${m['2028-2029']}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = _h;
+        }
+    </script>
+</body>
+</html>
